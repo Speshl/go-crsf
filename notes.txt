@@ -1,0 +1,3 @@
+Original TX and RX was pin 13
+Original Backpack RX Pin was 16
+Original Backpack TX Pin was 17

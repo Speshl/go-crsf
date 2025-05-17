@@ -42,7 +42,6 @@ func (c *CRSF) Stop() error {
 	}
 	c.running = false
 	c.ctx.Done()
-	c.crsfGroup.Wait()
 	return nil
 }
 
@@ -64,7 +63,8 @@ func (c *CRSF) Start(ctx context.Context) error {
 		return fmt.Errorf("failed opening crsf %s: %w", c.path, err)
 	}
 
-	c.crsfGroup, c.ctx = errgroup.WithContext(ctx)
+	crsfGroup, groupCtx := errgroup.WithContext(ctx)
+	c.ctx = groupCtx
 
 	c.readChan = make(chan byte, 4096)
 
@@ -83,6 +83,15 @@ func (c *CRSF) Start(ctx context.Context) error {
 			slog.Info("start writing to crsf", "path", c.path)
 			return c.startWriter()
 		})
+	}
+
+	crsfGroup.Wait()
+	if err := c.crsfGroup.Wait(); err != nil {
+		if errors.Is(err, context.Canceled) {
+			slog.Info("crsf context was cancelled", "path", c.path)
+			return nil
+		}
+		return fmt.Errorf("crsf group error: %w", err)
 	}
 
 	return nil
